@@ -10,7 +10,9 @@ let source = null;
 
 // alert
 
-const url = "http://localhost:8000";
+const url = ["localhost", "127.0.0.1"].includes(location.hostname)
+  ? "http://localhost:8000"
+  : "/api";
 
 function connect() {
   const rid = roomId.value === "" ? 1 : roomId.value;
