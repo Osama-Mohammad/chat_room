@@ -3,16 +3,16 @@ services:
     image: postgres:18.1
     container_name: chat-postgres
     environment:
-      POSTGRES_USER: chat
-      POSTGRES_PASSWORD: chat
-      POSTGRES_DB: chatdb
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+ 
     volumes:
       - chat_pgdata:/var/lib/postgresql
-    
+    restart: unless-stopped
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U chat -d chatdb"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d chatdb"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -20,25 +20,47 @@ services:
   redis:
     image: redis:8.4.0
     container_name: chat-redis
-    ports:
-      - "6379:6379"
+
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
 
   worker:
-    image: api-worker:latest
+    build: .
+    image: chat-worker:latest
     container_name: chat-worker
+    command: ["rq", "worker", "messages", "--url", "redis://redis:6379"]
     environment:
-      DATABASE_URL: postgresql+asyncpg://chat:chat@postgres:5432/chatdb
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
+    volumes:
+      - .:/app
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
+
+  api:
+    build: .
+    image: chat-worker:latest
+    container_name: chat-worker
+    command: ["uvicorn main:app --host 0.0.0.0 --port 8000"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/chatdb
+      REDIS_URL: redis://redis:6379
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 
 volumes:
   chat_pgdata:

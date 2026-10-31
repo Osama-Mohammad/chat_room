@@ -14,7 +14,7 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 
 
 app =FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:5500"], allow_methods=["*"],allow_headers=["*"],)
+app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:5500","http://localhost:5500"], allow_methods=["*"],allow_headers=["*"],)
 
 redis_conne = Redis(host="localhost",port=6379)
 redis_conn_a = aioredis.Redis(host="localhost",port=6379)
